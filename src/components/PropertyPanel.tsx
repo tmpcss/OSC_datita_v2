@@ -49,8 +49,7 @@ function Input({ value, onChange, type = 'text', ...props }: any) {
 
 export default function PropertyPanel() {
   const { 
-    selectedWidgetIds, showPropertyPanel, getActivePage, updateWidget, removeWidget, duplicateWidget,
-    oscGlobalHost, oscGlobalPort, setOscGlobalHost, setOscGlobalPort
+    selectedWidgetIds, showPropertyPanel, getActivePage, updateWidget, removeWidget, duplicateWidget
   } = useStore();
 
   const page = getActivePage();
@@ -66,45 +65,19 @@ export default function PropertyPanel() {
 
   if (!widget) {
     return (
-      <div className="w-64 bg-[#12121a] border-l border-white/5 flex flex-col h-full">
+      <div className="w-64 bg-[#12121a] border-l border-white/5 flex flex-col">
         <div className="p-4 border-b border-white/5">
-          <h3 className="text-sm font-semibold text-white/60">Controls</h3>
+          <h3 className="text-sm font-semibold text-white/60">Properties</h3>
         </div>
-        
-        <div className="flex-1 overflow-y-auto">
-          {selectedWidgets.length > 1 ? (
-             <div className="flex items-center justify-center p-8 h-full min-h-[200px]">
-               <div className="text-center text-white/20 space-y-2">
-                 <div className="text-3xl">🎯</div>
-                 <p className="text-xs">{selectedWidgets.length} widgets selected</p>
-               </div>
-             </div>
-          ) : (
-            <>
-              <Section title="Global Settings">
-                <Field label="Host">
-                  <Input
-                    value={oscGlobalHost}
-                    onChange={(e: any) => setOscGlobalHost(e.target.value)}
-                  />
-                </Field>
-                <Field label="Port">
-                  <Input
-                    type="number"
-                    value={oscGlobalPort}
-                    onChange={(e: any) => setOscGlobalPort(Number(e.target.value))}
-                  />
-                </Field>
-              </Section>
-              
-              <div className="flex items-center justify-center p-8 mt-10 opacity-50">
-                <div className="text-center text-white/20 space-y-2">
-                  <div className="text-3xl">🎯</div>
-                  <p className="text-xs">Select a widget to edit its properties</p>
-                </div>
-              </div>
-            </>
-          )}
+        <div className="flex-1 flex items-center justify-center">
+          <div className="text-center text-white/20 space-y-2 px-4">
+            <div className="text-3xl">🎯</div>
+            <p className="text-xs">
+              {selectedWidgets.length > 1
+                ? `${selectedWidgets.length} widgets selected`
+                : 'Select a widget to edit its properties'}
+            </p>
+          </div>
         </div>
       </div>
     );

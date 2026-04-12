@@ -101,7 +101,14 @@ function PageTabs({ collapsed }: PageTabsProps) {
 }
 
 export default function Sidebar() {
-  const { setDraggingType, editMode } = useStore();
+  const { 
+    setDraggingType, 
+    editMode,
+    oscGlobalHost,
+    oscGlobalPort,
+    setOscGlobalHost,
+    setOscGlobalPort
+  } = useStore();
   const [collapsed, setCollapsed] = React.useState(false);
 
   const handleDragStart = useCallback((e: React.DragEvent, type: ControlType) => {
@@ -144,7 +151,37 @@ export default function Sidebar() {
 
       {/* Controls palette */}
       {!collapsed && (
-        <div className="px-3 py-3">
+        <div className="px-3 py-3 border-b border-white/5 bg-white/[0.02]">
+          <span className="text-[10px] uppercase tracking-widest text-white/40 font-semibold mb-3 block">
+            Global Settings
+          </span>
+          <div className="space-y-3">
+            <div className="flex flex-col gap-1">
+              <label className="text-[9px] text-white/30 uppercase font-bold">OSC Host</label>
+              <input
+                type="text"
+                value={oscGlobalHost}
+                onChange={(e) => setOscGlobalHost(e.target.value)}
+                className="bg-black/20 border border-white/5 rounded px-2 py-1 text-xs text-white/70 outline-none focus:border-indigo-500/50 transition-colors"
+                placeholder="127.0.0.1"
+              />
+            </div>
+            <div className="flex flex-col gap-1">
+              <label className="text-[9px] text-white/30 uppercase font-bold">OSC Port</label>
+              <input
+                type="number"
+                value={oscGlobalPort}
+                onChange={(e) => setOscGlobalPort(Number(e.target.value))}
+                className="bg-black/20 border border-white/5 rounded px-2 py-1 text-xs text-white/70 outline-none focus:border-indigo-500/50 transition-colors"
+                placeholder="9000"
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {!collapsed && (
+        <div className="px-3 pt-4 pb-2">
           <span className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">
             Components
           </span>

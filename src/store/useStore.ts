@@ -84,8 +84,15 @@ interface AppStore {
   showPropertyPanel: boolean;
   draggingType: ControlType | null;
   clipboard: ControlWidget[];
+  past: Page[][];
+  future: Page[][];
+  bridgeConnected: boolean;
 
   // Actions
+  undo: () => void;
+  redo: () => void;
+  saveHistory: () => void;
+  initBridge: () => void;
   setProjectName: (name: string) => void;
   setEditMode: (mode: boolean) => void;
   setGridSize: (size: number) => void;
@@ -146,6 +153,80 @@ const useStore = create<AppStore>((set, get) => ({
   showPropertyPanel: true,
   draggingType: null,
   clipboard: [],
+  past: [],
+  future: [],
+  bridgeConnected: false,
+
+  initBridge: () => {
+    if (typeof window === 'undefined') return;
+    
+    // Cleanup if existing
+    const existing = (window as any)._oscSocket;
+    if (existing) {
+      existing.close();
+    }
+
+    const socket = new WebSocket('ws://localhost:8080');
+    (window as any)._oscSocket = socket;
+
+    socket.onopen = () => {
+      console.log('Connected to OSC Bridge');
+      set({ bridgeConnected: true });
+    };
+
+    socket.onclose = () => {
+      console.log('Disconnected from OSC Bridge');
+      set({ bridgeConnected: false });
+      // Retry after 5s
+      setTimeout(() => get().initBridge(), 5000);
+    };
+
+    socket.onerror = () => {
+      set({ bridgeConnected: false });
+    };
+  },
+
+  saveHistory: () => {
+    const { pages } = get();
+    // Only save if different from last entry
+    const last = get().past[get().past.length - 1];
+    if (last && JSON.stringify(last) === JSON.stringify(pages)) return;
+
+    set((s) => ({
+      past: [...s.past.slice(-50), s.pages],
+      future: [],
+    }));
+  },
+
+  undo: () => {
+    const { past, pages, future } = get();
+    if (past.length === 0) return;
+
+    const previous = past[past.length - 1];
+    const newPast = past.slice(0, past.length - 1);
+
+    set({
+      pages: previous,
+      past: newPast,
+      future: [pages, ...future.slice(0, 49)],
+      selectedWidgetIds: [], // Clear selection to avoid zombie references
+    });
+  },
+
+  redo: () => {
+    const { past, pages, future } = get();
+    if (future.length === 0) return;
+
+    const next = future[0];
+    const newFuture = future.slice(1);
+
+    set({
+      pages: next,
+      past: [...past.slice(-49), pages],
+      future: newFuture,
+      selectedWidgetIds: [],
+    });
+  },
 
   setProjectName: (name) => set({ projectName: name }),
   setEditMode: (mode) => set({ editMode: mode, selectedWidgetIds: mode ? get().selectedWidgetIds : [] }),
@@ -159,6 +240,7 @@ const useStore = create<AppStore>((set, get) => ({
   setDraggingType: (type) => set({ draggingType: type }),
 
   addPage: () => {
+    get().saveHistory();
     const newPage: Page = {
       id: uuidv4(),
       name: `Page ${get().pages.length + 1}`,
@@ -171,6 +253,7 @@ const useStore = create<AppStore>((set, get) => ({
   removePage: (id) => {
     const pages = get().pages;
     if (pages.length <= 1) return;
+    get().saveHistory();
     const idx = pages.findIndex((p) => p.id === id);
     const newPages = pages.filter((p) => p.id !== id);
     const newActive = id === get().activePageId
@@ -187,6 +270,7 @@ const useStore = create<AppStore>((set, get) => ({
     })),
 
   addWidget: (type, x, y) => {
+    get().saveHistory();
     const snap = get().snapToGrid;
     const grid = get().gridSize;
     const sx = snap ? Math.round(x / grid) * grid : x;
@@ -200,7 +284,8 @@ const useStore = create<AppStore>((set, get) => ({
     }));
   },
 
-  removeWidget: (id) =>
+  removeWidget: (id) => {
+    get().saveHistory();
     set((s) => ({
       pages: s.pages.map((p) =>
         p.id === s.activePageId
@@ -208,10 +293,13 @@ const useStore = create<AppStore>((set, get) => ({
           : p
       ),
       selectedWidgetIds: s.selectedWidgetIds.filter((sid) => sid !== id),
-    })),
+    }));
+  },
 
   removeSelectedWidgets: () => {
     const ids = get().selectedWidgetIds;
+    if (ids.length === 0) return;
+    get().saveHistory();
     set((s) => ({
       pages: s.pages.map((p) =>
         p.id === s.activePageId
@@ -222,7 +310,9 @@ const useStore = create<AppStore>((set, get) => ({
     }));
   },
 
-  updateWidget: (id, updates) =>
+  updateWidget: (id, updates) => {
+    // Only save history for structural or permanent prop changes, not value updates
+    // This is handled per-action for clarity
     set((s) => ({
       pages: s.pages.map((p) =>
         p.id === s.activePageId
@@ -234,9 +324,12 @@ const useStore = create<AppStore>((set, get) => ({
             }
           : p
       ),
-    })),
+    }));
+  },
 
   moveWidget: (id, x, y) => {
+    // Note: We don't call saveHistory here because moveWidget is often called continuously during drag.
+    // The history point is usually created AT THE START of the drag by the wrapper/canvas.
     const snap = get().snapToGrid && get().editMode;
     const grid = get().gridSize;
     const sx = snap ? Math.round(x / grid) * grid : x;
@@ -266,6 +359,7 @@ const useStore = create<AppStore>((set, get) => ({
     const page = get().getActivePage();
     const widget = page.widgets.find((w) => w.id === id);
     if (!widget) return;
+    get().saveHistory();
     const dup = { ...widget, id: uuidv4(), x: widget.x + 20, y: widget.y + 20 };
     set((s) => ({
       pages: s.pages.map((p) =>
@@ -284,6 +378,7 @@ const useStore = create<AppStore>((set, get) => ({
   pasteWidgets: () => {
     const clips = get().clipboard;
     if (clips.length === 0) return;
+    get().saveHistory();
     const newWidgets = clips.map((w) => ({
       ...w,
       id: uuidv4(),
@@ -351,7 +446,20 @@ const useStore = create<AppStore>((set, get) => ({
       });
     }
 
-    msgs.forEach(msg => get().logOscMessage(msg));
+    msgs.forEach(msg => {
+      get().logOscMessage(msg);
+      
+      // Send to bridge
+      const socket = (window as any)._oscSocket;
+      if (socket && socket.readyState === WebSocket.OPEN) {
+        socket.send(JSON.stringify({
+          host: get().oscGlobalHost,
+          port: get().oscGlobalPort,
+          address: msg.address,
+          args: msg.args
+        }));
+      }
+    });
   },
 
   logOscMessage: (msg) =>

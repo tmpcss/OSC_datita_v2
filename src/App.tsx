@@ -15,12 +15,17 @@ export default function App() {
     pasteWidgets,
     deselectAll,
     selectedWidgetIds,
+    undo,
+    redo,
+    initBridge,
+    bridgeConnected,
   } = useStore();
 
   // Load saved project on mount
   useEffect(() => {
     loadProject();
-  }, [loadProject]);
+    initBridge();
+  }, [loadProject, initBridge]);
 
   // Keyboard shortcuts
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
@@ -41,7 +46,24 @@ export default function App() {
     if ((e.metaKey || e.ctrlKey) && e.key === 'v') {
       if (editMode) pasteWidgets();
     }
-  }, [editMode, selectedWidgetIds, removeSelectedWidgets, deselectAll, copySelected, pasteWidgets]);
+
+    // Undo / Redo
+    if ((e.metaKey || e.ctrlKey) && e.key === 'z') {
+      if (!editMode) return;
+      e.preventDefault();
+      if (e.shiftKey) {
+        redo();
+      } else {
+        undo();
+      }
+    }
+    // Redo can also be Ctrl+Y on some systems, though Cmd+Shift+Z is standard on Mac
+    if ((e.metaKey || e.ctrlKey) && e.key === 'y') {
+      if (!editMode) return;
+      e.preventDefault();
+      redo();
+    }
+  }, [editMode, selectedWidgetIds, removeSelectedWidgets, deselectAll, copySelected, pasteWidgets, undo, redo]);
 
   useEffect(() => {
     window.addEventListener('keydown', handleKeyDown);
@@ -79,14 +101,15 @@ export default function App() {
           {editMode ? '✏️ Edit Mode' : '▶ Live Mode'}
         </span>
         <span className="text-[10px] text-white/15">|</span>
-        <span className="text-[10px] text-white/20">
-          {selectedWidgetIds.length > 0
-            ? `${selectedWidgetIds.length} selected`
-            : 'No selection'}
-        </span>
+        <div className="flex items-center gap-1.5">
+          <div className={`w-1.5 h-1.5 rounded-full ${bridgeConnected ? 'bg-green-500 shadow-[0_0_5px_#22c55e]' : 'bg-red-500 shadow-[0_0_5px_#ef4444]'}`} />
+          <span className={`text-[10px] ${bridgeConnected ? 'text-green-500/60' : 'text-red-500/60'}`}>
+            {bridgeConnected ? 'Bridge Active' : 'Bridge Offline'}
+          </span>
+        </div>
         <div className="flex-1" />
         <span className="text-[10px] text-white/15">
-          Drag & Drop • OSC • MIDI • Lua
+          OSC • MIDI • Lua • Realtime Relay
         </span>
       </div>
     </div>
