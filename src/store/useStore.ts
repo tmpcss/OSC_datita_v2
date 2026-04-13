@@ -57,6 +57,7 @@ function createWidget(type: ControlType, x: number, y: number): ControlWidget {
     visible: true,
     momentary: type === 'button',
     orientation: type === 'fader' ? 'vertical' : 'horizontal',
+    customValue: type === 'label' ? 'hello' : undefined,
   };
 }
 
@@ -123,6 +124,11 @@ interface AppStore {
   copySelected: () => void;
   pasteWidgets: () => void;
   setWidgetValue: (id: string, value: number, valueY?: number) => void;
+  triggerWidgetMessage: (id: string) => void;
+
+  // Export/Import
+  exportPage: (id: string) => void;
+  importPage: (id: string, jsonData: string) => void;
 
   // OSC log
   logOscMessage: (msg: OscMessage) => void;
@@ -460,6 +466,72 @@ const useStore = create<AppStore>((set, get) => ({
         }));
       }
     });
+  },
+
+  triggerWidgetMessage: (id) => {
+    const page = get().getActivePage();
+    const widget = page.widgets.find((w) => w.id === id);
+    if (!widget) return;
+
+    // For labels or manual triggers, send customValue if it exists, or just the label
+    const valueToSend = widget.customValue !== undefined ? widget.customValue : widget.label;
+    
+    const msg: OscMessage = {
+      address: widget.osc.address,
+      args: [valueToSend],
+      timestamp: Date.now(),
+    };
+
+    get().logOscMessage(msg);
+
+    const socket = (window as any)._oscSocket;
+    if (socket && socket.readyState === WebSocket.OPEN) {
+      socket.send(JSON.stringify({
+        host: get().oscGlobalHost,
+        port: get().oscGlobalPort,
+        address: msg.address,
+        args: msg.args
+      }));
+    }
+  },
+
+  exportPage: (id) => {
+    const page = get().pages.find(p => p.id === id);
+    if (!page) return;
+
+    const data = {
+      version: '1.0',
+      type: 'page-export',
+      name: page.name,
+      widgets: page.widgets,
+    };
+
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${page.name.replace(/\s+/g, '_')}_osc_datita.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+  },
+
+  importPage: (id, jsonData) => {
+    try {
+      const data = JSON.parse(jsonData);
+      if (data.type !== 'page-export' || !Array.isArray(data.widgets)) {
+        throw new Error('Invalid page data format');
+      }
+
+      get().saveHistory();
+      set((s) => ({
+        pages: s.pages.map(p => 
+          p.id === id ? { ...p, widgets: data.widgets } : p
+        )
+      }));
+    } catch (e) {
+      console.error('Failed to import page:', e);
+      alert('Error importing page: Invalid file format');
+    }
   },
 
   logOscMessage: (msg) =>

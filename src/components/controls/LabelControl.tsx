@@ -1,3 +1,4 @@
+import useStore from '../../store/useStore';
 import type { ControlWidget } from '../../types';
 
 interface Props {
@@ -5,9 +6,18 @@ interface Props {
 }
 
 export default function LabelControl({ widget }: Props) {
+  const { editMode, triggerWidgetMessage } = useStore();
+
+  const handlePointerDown = (e: React.PointerEvent) => {
+    if (editMode) return;
+    e.stopPropagation();
+    triggerWidgetMessage(widget.id);
+  };
+
   return (
     <div
-      className="w-full h-full flex items-center justify-center select-none"
+      onPointerDown={handlePointerDown}
+      className={`w-full h-full flex items-center justify-center select-none ${!editMode ? 'cursor-pointer active:scale-95 transition-transform' : ''}`}
       style={{
         color: widget.color,
         fontSize: Math.max(10, Math.min(widget.width * 0.12, widget.height * 0.5)),

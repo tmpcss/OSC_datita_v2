@@ -40,6 +40,7 @@ export interface ControlWidget {
   // Type-specific
   momentary?: boolean; // for button
   orientation?: 'horizontal' | 'vertical'; // for slider/fader
+  customValue?: string; // for label triggers
 }
 
 export interface Page {

@@ -101,12 +101,17 @@ export default function App() {
           {editMode ? '✏️ Edit Mode' : '▶ Live Mode'}
         </span>
         <span className="text-[10px] text-white/15">|</span>
-        <div className="flex items-center gap-1.5">
+        <button 
+          onClick={() => initBridge()}
+          className="flex items-center gap-1.5 hover:bg-white/5 px-2 py-1 rounded transition-colors group"
+          title="Click to reconnect bridge"
+        >
           <div className={`w-1.5 h-1.5 rounded-full ${bridgeConnected ? 'bg-green-500 shadow-[0_0_5px_#22c55e]' : 'bg-red-500 shadow-[0_0_5px_#ef4444]'}`} />
           <span className={`text-[10px] ${bridgeConnected ? 'text-green-500/60' : 'text-red-500/60'}`}>
             {bridgeConnected ? 'Bridge Active' : 'Bridge Offline'}
           </span>
-        </div>
+          {!bridgeConnected && <span className="text-[10px] text-white/20 group-hover:text-white/40 ml-1">↻ Try Connect</span>}
+        </button>
         <div className="flex-1" />
         <span className="text-[10px] text-white/15">
           OSC • MIDI • Lua • Realtime Relay

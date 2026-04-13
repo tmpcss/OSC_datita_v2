@@ -27,7 +27,8 @@ interface PageTabsProps {
 }
 
 function PageTabs({ collapsed }: PageTabsProps) {
-  const { pages, activePageId, setActivePage, addPage, removePage, renamePage } = useStore();
+  const { pages, activePageId, setActivePage, addPage, removePage, renamePage, exportPage, importPage } = useStore();
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
   const [editingId, setEditingId] = React.useState<string | null>(null);
   const [editName, setEditName] = React.useState('');
 
@@ -37,14 +38,41 @@ function PageTabs({ collapsed }: PageTabsProps) {
     <div className="px-3 pb-3">
       <div className="flex items-center justify-between mb-2">
         <span className="text-[10px] uppercase tracking-widest text-white/40 font-semibold">Pages</span>
-        <button
-          onClick={addPage}
-          className="text-white/40 hover:text-white/80 text-lg leading-none transition-colors"
-          title="Add page"
-        >
-          +
-        </button>
+        <div className="flex gap-1">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="text-white/30 hover:text-white/70 transition-colors text-xs p-1"
+            title="Import page"
+          >
+            📂
+          </button>
+          <button
+            onClick={addPage}
+            className="text-white/40 hover:text-white/80 text-lg leading-none transition-colors p-1"
+            title="Add page"
+          >
+            +
+          </button>
+        </div>
       </div>
+
+      <input
+        type="file"
+        ref={fileInputRef}
+        className="hidden"
+        accept=".json"
+        onChange={(e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+          const reader = new FileReader();
+          reader.onload = (event) => {
+            const content = event.target?.result as string;
+            importPage(activePageId, content);
+          };
+          reader.readAsText(file);
+          e.target.value = ''; // Reset
+        }}
+      />
       <div className="space-y-1">
         {pages.map((page) => (
           <div
@@ -89,10 +117,21 @@ function PageTabs({ collapsed }: PageTabsProps) {
                   e.stopPropagation();
                   removePage(page.id);
                 }}
+                title="Remove page"
               >
                 ×
               </button>
             )}
+            <button
+              className="text-white/20 hover:text-blue-400 text-[10px] transition-colors opacity-0 group-hover:opacity-100 p-1"
+              onClick={(e) => {
+                e.stopPropagation();
+                exportPage(page.id);
+              }}
+              title="Export page"
+            >
+              💾
+            </button>
           </div>
         ))}
       </div>

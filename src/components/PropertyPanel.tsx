@@ -170,32 +170,43 @@ export default function PropertyPanel() {
         </Section>
 
         {/* Value */}
-        {widget.type !== 'label' && (
-          <Section title="Value">
-            <Field label="Current">
-              <div className="text-xs text-white/60 font-mono">
-                {widget.value.toFixed(3)}
-                {widget.valueY !== undefined && ` / ${widget.valueY.toFixed(3)}`}
-              </div>
-            </Field>
-            <Field label="Min">
-              <Input
-                type="number"
-                step="0.01"
-                value={widget.osc.min}
-                onChange={(e: any) => update({ osc: { ...widget.osc, min: Number(e.target.value) } })}
-              />
-            </Field>
-            <Field label="Max">
-              <Input
-                type="number"
-                step="0.01"
-                value={widget.osc.max}
-                onChange={(e: any) => update({ osc: { ...widget.osc, max: Number(e.target.value) } })}
-              />
-            </Field>
+        <Section title="Value">
+          <Field label="Current">
+            <div className="text-xs text-white/60 font-mono">
+              {widget.value.toFixed(3)}
+              {widget.valueY !== undefined && ` / ${widget.valueY.toFixed(3)}`}
+            </div>
+          </Field>
+            {widget.type === 'label' && (
+              <Field label="Custom Value">
+                <Input
+                  value={widget.customValue || ''}
+                  onChange={(e: any) => update({ customValue: e.target.value })}
+                  placeholder="Trigger value..."
+                />
+              </Field>
+            )}
+            {widget.type !== 'label' && (
+              <>
+                <Field label="Min">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={widget.osc.min}
+                    onChange={(e: any) => update({ osc: { ...widget.osc, min: Number(e.target.value) } })}
+                  />
+                </Field>
+                <Field label="Max">
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={widget.osc.max}
+                    onChange={(e: any) => update({ osc: { ...widget.osc, max: Number(e.target.value) } })}
+                  />
+                </Field>
+              </>
+            )}
           </Section>
-        )}
 
         {/* Type-specific */}
         {(widget.type === 'slider' || widget.type === 'fader') && (
